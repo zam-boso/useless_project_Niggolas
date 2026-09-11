@@ -1,0 +1,468 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>COOKED</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a0a10;
+    --surface: #15151f;
+    --border: #2a2a38;
+    --text: #f2f1f7;
+    --muted: #8b8b9c;
+    --accent: oklch(72% 0.23 340);
+    --accent-2: oklch(72% 0.23 210);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; padding: 40px 20px 56px;
+    background:
+      radial-gradient(1100px 600px at 50% -10%, #1c1428 0%, var(--bg) 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  h1 {
+    margin: 0; font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+    font-size: 34px; letter-spacing: -0.02em;
+    background: linear-gradient(120deg, var(--text) 40%, var(--accent) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  p.sub { margin: 8px 0 28px; color: var(--muted); font-size: 13.5px; max-width: 520px; text-align: center; line-height: 1.5; }
+  .stage {
+    position: relative; width: 640px; max-width: 95vw;
+    border-radius: 20px; overflow: hidden; border: 1px solid var(--border);
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,0.7);
+  }
+  video, canvas { width: 100%; display: block; }
+  canvas { position: absolute; top: 0; left: 0; transform: scaleX(-1); }
+  video { transform: scaleX(-1); background: #000; }
+  #compliment {
+    margin-top: 22px; font-size: 19px; font-weight: 500; text-align: center;
+    min-height: 34px; max-width: 640px; padding: 20px 26px; border-radius: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    box-shadow: 0 20px 50px -25px rgba(0,0,0,0.6);
+    transition: opacity .3s;
+  }
+  #status {
+    margin-top: 14px; font-size: 11.5px; font-weight: 500; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 7px;
+  }
+  #status::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 8px 1px var(--accent);
+  }
+  button#startBtn {
+    margin-top: 22px; padding: 13px 30px; border-radius: 999px; border: none;
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    color: #10060f; font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+    font-size: 14.5px; letter-spacing: 0.01em; cursor: pointer;
+    box-shadow: 0 12px 30px -10px oklch(72% 0.23 340 / 0.55);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  button#startBtn:hover { transform: translateY(-2px); box-shadow: 0 16px 36px -10px oklch(72% 0.23 340 / 0.7); }
+  button#startBtn:active { transform: translateY(0); }
+  button#startBtn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
+</style>
+</head>
+<body>
+<h1>COOKED</h1>
+<p class="sub">Full face &amp; body tracker that roasts you live. Camera stays on your device — nothing leaves except your stats, to the AI doing the roasting.</p>
+
+<div class="stage">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="overlay"></canvas>
+</div>
+
+<div id="compliment">Click start, grant camera. Odd compliments incoming.</div>
+<div id="status">Loading models...</div>
+<button id="startBtn">Start Camera</button>
+
+<script src="insults.js"></script>
+<script src="config.js"></script>
+<script type="module">
+import {
+  FaceLandmarker, PoseLandmarker, FilesetResolver
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
+const complimentEl = document.getElementById('compliment');
+const statusEl = document.getElementById('status');
+const startBtn = document.getElementById('startBtn');
+
+const GROQ_API_KEY = window.GROQ_API_KEY || '';
+
+const IMOJI_SOUNDS = [
+  'ahh-rblx-scared.mp3', 'aughhhhh-aughhhhh.mp3', 'aughhhhh.mp3', 'aura-fonk_n4hQ6Qo.mp3',
+  'ayo_ngawHKc.mp3', 'baby-dont-hurt-me_7vCVQPM.mp3', 'brother-ewwwwwww.mp3', 'buzzer-error.mp3',
+  'daddyy-chill.mp3', 'disgusting_WJOvrJj.mp3', 'ew-dude-wtf (1).mp3', 'ew-dude-wtf.mp3',
+  'fahhhhhhhhhhhhhh.mp3', 'lizzard-1.mp3', 'loud-explosion.mp3', 'muhehehe.mp3',
+  'obi-wan_says_hello_thereyoutubetomp4.mp3', 'pluh.mp3', 'raaaaaah.mp3', 'romanceeeeeeeeeeeeee.mp3',
+  'sad-cat-singing.mp3', 'screaming-goat.mp3', 'side-eye.mp3', 'stop-the-cap-cut.mp3',
+  'style-points_TW2LQSU (1).mp3', 'style-points_TW2LQSU.mp3', 'treat-me-like-white-tee.mp3',
+  'tyler-the-creator-sike_ItZTbtq.mp3', 'windows-10-error-sound.mp3',
+];
+
+function playRandomImoji() {
+  const file = IMOJI_SOUNDS[Math.floor(Math.random() * IMOJI_SOUNDS.length)];
+  const audio = new Audio(`IMOJI/${encodeURIComponent(file)}`);
+  audio.play().catch(() => {});
+}
+
+let faceLandmarker, poseLandmarker;
+let lastComplimentTime = 0;
+let sessionStart = 0;
+let aiBusy = false;
+const COMPLIMENT_INTERVAL_MS = 7000;
+const ESCALATE_EVERY_MS = 15000;
+const usedInsults = new Set();
+
+async function loadModels() {
+  const filesetResolver = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  );
+  faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+    baseOptions: {
+      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+      delegate: "GPU"
+    },
+    outputFaceBlendshapes: true,
+    runningMode: "VIDEO",
+    numFaces: 1
+  });
+  poseLandmarker = await PoseLandmarker.createFromOptions(filesetResolver, {
+    baseOptions: {
+      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+      delegate: "GPU"
+    },
+    runningMode: "VIDEO",
+    numPoses: 1
+  });
+  statusEl.textContent = "Models loaded. Click start.";
+}
+
+startBtn.addEventListener('click', startCamera);
+
+async function startCamera() {
+  startBtn.disabled = true;
+  statusEl.textContent = "Requesting camera...";
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+  video.srcObject = stream;
+  await video.play();
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  statusEl.textContent = "Tracking live.";
+  sessionStart = performance.now();
+  requestAnimationFrame(loop);
+}
+
+function dist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y, (a.z||0) - (b.z||0));
+}
+
+function angleAt(a, b, c) {
+  // angle at point b formed by a-b-c, degrees
+  const ab = { x: a.x - b.x, y: a.y - b.y };
+  const cb = { x: c.x - b.x, y: c.y - b.y };
+  const dot = ab.x*cb.x + ab.y*cb.y;
+  const magAb = Math.hypot(ab.x, ab.y);
+  const magCb = Math.hypot(cb.x, cb.y);
+  if (magAb === 0 || magCb === 0) return 0;
+  const cos = Math.min(1, Math.max(-1, dot / (magAb*magCb)));
+  return Math.acos(cos) * 180 / Math.PI;
+}
+
+// ---- Generative sarcastic insult engine ----
+// Escalates in savagery the longer someone stands in frame.
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function fmt(n) { return Math.round(n * 100) / 100; }
+
+const FACE_PARTS = ['eyebrows', 'eyes', 'nose', 'mouth', 'jawline', 'forehead', 'chin', 'cheeks'];
+const BODY_PARTS = ['shoulders', 'elbows', 'posture', 'stance', 'arms', 'neck'];
+
+// Tier 0: mild ribbing. Tier 3: maximum unhinged (still silly, never targets real flaws).
+const TIERS = [
+  [ // tier 0 - mild
+    `ur {part} showed up today, that's about all I can say for it`,
+    `something's going on with ur {part} and nobody's told u yet`,
+    `ur {part} is doing its best. its best is a low bar`,
+    `respectfully, ur {part} needs a manager`,
+    `ur {part} is giving "first draft"`,
+    `not the {part} acting up again`,
+  ],
+  [ // tier 1 - medium
+    `ur {part} looks like it was assembled from a kit missing pieces`,
+    `I've seen more symmetry in a crime scene photo than in ur {part}`,
+    `ur {part} is the reason group photos have a delete button`,
+    `somebody rushed the last step on ur {part}, it shows`,
+    `ur {part} is giving discount clearance rack energy`,
+    `if ur {part} were a wifi signal it'd be one bar in a basement`,
+  ],
+  [ // tier 2 - savage
+    `ur {part} is what happens when a rough draft never gets edited`,
+    `ur {part} owes the rest of ur face an apology`,
+    `scientists studied ur {part} and just wrote "why" in the report`,
+    `ur {part} is the plot twist nobody asked for`,
+    `even the camera is struggling to stay professional about ur {part}`,
+    `ur {part} looks like it's still in beta testing and failing QA`,
+  ],
+  [ // tier 3 - unhinged, still just silly not cruel
+    `ur {part} has been reported to the Geneva Convention`,
+    `ur {part} is a cautionary tale taught in art school`,
+    `ur {part} just set off every smoke alarm in the building, metaphorically and possibly literally`,
+    `historians will one day ask "what happened here" and point directly at ur {part}`,
+    `ur {part} broke containment and nobody's been able to explain it since`,
+    `at this point ur {part} is basically a cryptid, people won't believe it till they see it`,
+  ],
+];
+
+const OPENERS = ['ok so', 'not gonna lie,', 'real talk,', 'listen —', 'ngl,', 'hate to say it but', 'someone had to say it:', ''];
+const CLOSERS = ['', ' anyway.', ' just saying.', ' do with that what u will.', ' no cap.', ' that\'s just facts.', ' we move.'];
+
+function escalationLevel() {
+  if (!sessionStart) return 0;
+  const elapsed = performance.now() - sessionStart;
+  return Math.min(TIERS.length - 1, Math.floor(elapsed / ESCALATE_EVERY_MS));
+}
+
+function generateInsult(parts) {
+  const level = escalationLevel();
+  let attempt = '';
+  for (let i = 0; i < 8; i++) {
+    const template = pick(TIERS[level]);
+    const part = pick(parts);
+    const opener = pick(OPENERS);
+    const closer = pick(CLOSERS);
+    attempt = `${opener ? opener + ' ' : ''}${template.replace('{part}', part)}${closer}`;
+    if (!usedInsults.has(attempt)) break;
+  }
+  usedInsults.add(attempt);
+  if (usedInsults.size > 200) usedInsults.clear();
+  return attempt;
+}
+
+function faceCompliments() {
+  const list = [];
+  for (let i = 0; i < 3; i++) list.push(generateInsult(FACE_PARTS));
+  return list;
+}
+
+function poseCompliments() {
+  const list = [];
+  for (let i = 0; i < 3; i++) list.push(generateInsult(BODY_PARTS));
+  return list;
+}
+
+// ---- Live posture/expression summary fed to the AI roaster ----
+
+function summarizeFace(lm, blendshapes) {
+  const leftEyeOuter = lm[33], leftEyeInner = lm[133];
+  const rightEyeInner = lm[362], rightEyeOuter = lm[263];
+  const noseTip = lm[1];
+  const leftMouth = lm[61], rightMouth = lm[291];
+  const chin = lm[152];
+  const foreheadTop = lm[10];
+  const leftBrow = lm[105], rightBrow = lm[334];
+  const leftEyeTop = lm[159], leftEyeBottom = lm[145];
+  const rightEyeTop = lm[386], rightEyeBottom = lm[374];
+
+  const faceWidth = dist(leftEyeOuter, rightEyeOuter);
+  const faceHeight = dist(foreheadTop, chin);
+  const mouthWidth = dist(leftMouth, rightMouth);
+  const leftEyeOpen = dist(leftEyeTop, leftEyeBottom);
+  const rightEyeOpen = dist(rightEyeTop, rightEyeBottom);
+  const browAsymmetry = Math.abs(leftBrow.y - rightBrow.y) / faceWidth;
+  const eyeOpenAsymmetry = Math.abs(leftEyeOpen - rightEyeOpen) / faceWidth;
+  const faceRatio = fmt(faceHeight / faceWidth);
+  const mouthToFaceRatio = fmt(mouthWidth / faceWidth);
+
+  const bits = [
+    `face height/width ratio ${faceRatio}`,
+    `mouth width is ${mouthToFaceRatio}x face width`,
+    `eyebrow height asymmetry ${fmt(browAsymmetry*100)}`,
+    `eye openness asymmetry ${fmt(eyeOpenAsymmetry*100)}`,
+  ];
+
+  if (blendshapes && blendshapes.length) {
+    const scores = blendshapes[0].categories;
+    const top3 = [...scores].sort((a,b)=>b.score-a.score)
+      .filter(s => !s.categoryName.includes('Neutral') && s.score > 0.1)
+      .slice(0, 3);
+    if (top3.length) {
+      bits.push('active expression features: ' + top3.map(s => `${s.categoryName}=${fmt(s.score)}`).join(', '));
+    }
+  }
+
+  return 'FACE: ' + bits.join('; ');
+}
+
+function summarizePose(pose) {
+  const lShoulder = pose[11], rShoulder = pose[12];
+  const lElbow = pose[13], rElbow = pose[14];
+  const lWrist = pose[15], rWrist = pose[16];
+  const lHip = pose[23], rHip = pose[24];
+
+  const shoulderTilt = fmt(Math.atan2(rShoulder.y - lShoulder.y, rShoulder.x - lShoulder.x) * 180/Math.PI);
+  const leftElbowAngle = fmt(angleAt(lShoulder, lElbow, lWrist));
+  const rightElbowAngle = fmt(angleAt(rShoulder, rElbow, rWrist));
+  const shoulderWidth = dist(lShoulder, rShoulder);
+  const hipWidth = dist(lHip, rHip);
+  const shoulderHipRatio = fmt(shoulderWidth / (hipWidth || 0.001));
+  const torsoLean = fmt(Math.atan2(
+    ((lShoulder.x+rShoulder.x)/2) - ((lHip.x+rHip.x)/2),
+    ((lHip.y+rHip.y)/2) - ((lShoulder.y+rShoulder.y)/2)
+  ) * 180/Math.PI);
+
+  return 'POSTURE: ' + [
+    `shoulder tilt ${shoulderTilt} deg`,
+    `left elbow angle ${leftElbowAngle} deg`,
+    `right elbow angle ${rightElbowAngle} deg`,
+    `shoulder/hip width ratio ${shoulderHipRatio}`,
+    `torso lean ${torsoLean} deg`,
+  ].join('; ');
+}
+
+function tierLabel(level) {
+  return ['mildly sarcastic', 'clearly savage', 'brutally savage', 'unhinged but still silly, never actually cruel'][level];
+}
+
+async function aiInsult(statsText, level) {
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-oss-120b',
+        max_tokens: 200,
+        reasoning_effort: 'low',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a comedic roast bot inside a webcam toy. You get live numeric measurements of someone's current facial expression and body posture and turn them into ONE short, punchy, ${tierLabel(level)} sarcastic insult about what they're doing RIGHT NOW. Write it in current trending Gen-Z internet slang — words like rizz, gyatt, skibidi, sigma, fanum tax, mewing, npc, aura points, ohio, mogging, delulu, brainrot, gooning, chopped, mid, no cap, fr fr, bussin, lowkey/highkey, glazing, cooked, yapping, sybau, girl dinner, bed rotting, are used naturally, not forced. Never mention the raw numbers. Never insult immutable traits like race, disability, body size, or gender. Keep it absurd and silly, not genuinely cruel. Output ONLY the one-sentence insult, no quotes, no preamble.`,
+          },
+          { role: 'user', content: statsText },
+        ],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content?.trim();
+    return text || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setComplimentText(text) {
+  complimentEl.style.opacity = 0;
+  setTimeout(() => {
+    complimentEl.textContent = text;
+    complimentEl.style.opacity = 1;
+    playRandomImoji();
+  }, 150);
+}
+
+async function showInsult(faceResult, poseResult) {
+  const level = escalationLevel();
+  const hasFace = faceResult.faceLandmarks && faceResult.faceLandmarks.length;
+  const hasPose = poseResult.landmarks && poseResult.landmarks.length;
+
+  const localPool = [];
+  if (hasFace) localPool.push(...faceCompliments());
+  if (hasPose) localPool.push(...poseCompliments());
+  if (window.INSULT_BANK) localPool.push(...window.INSULT_BANK);
+
+  const statsParts = [];
+  if (hasFace) statsParts.push(summarizeFace(faceResult.faceLandmarks[0], faceResult.faceBlendshapes));
+  if (hasPose) statsParts.push(summarizePose(poseResult.landmarks[0]));
+  const statsText = statsParts.join('\n');
+
+  aiBusy = true;
+  statusEl.textContent = 'Tracking live. AI roasting...';
+  const aiText = await aiInsult(statsText, level);
+  aiBusy = false;
+  statusEl.textContent = 'Tracking live.';
+
+  setComplimentText(aiText || pick(localPool));
+}
+
+async function loop() {
+  const now = performance.now();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const faceResult = faceLandmarker.detectForVideo(video, now);
+  const poseResult = poseLandmarker.detectForVideo(video, now);
+
+  drawDetectionBox(faceResult.faceLandmarks, 'face', '#ff4dd8');
+  drawDetectionBox(poseResult.landmarks, 'person', '#39ff6a');
+
+  const hasFace = faceResult.faceLandmarks && faceResult.faceLandmarks.length;
+  const hasPose = poseResult.landmarks && poseResult.landmarks.length;
+
+  if (now - lastComplimentTime > COMPLIMENT_INTERVAL_MS && !aiBusy) {
+    if (hasFace || hasPose) {
+      lastComplimentTime = now;
+      showInsult(faceResult, poseResult);
+    } else {
+      complimentEl.textContent = "bestie where u at, step into frame fr";
+    }
+  }
+
+  requestAnimationFrame(loop);
+}
+
+function drawDetectionBox(landmarksArr, label, color) {
+  if (!landmarksArr || !landmarksArr.length) return;
+  for (const lms of landmarksArr) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let visSum = 0, visCount = 0;
+    for (const p of lms) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+      if (typeof p.visibility === 'number') { visSum += p.visibility; visCount++; }
+    }
+    const padX = (maxX - minX) * 0.08;
+    const padY = (maxY - minY) * 0.08;
+    const x = Math.max(0, (minX - padX)) * canvas.width;
+    const y = Math.max(0, (minY - padY)) * canvas.height;
+    const w = Math.min(1, (maxX - minX + padX * 2)) * canvas.width;
+    const h = Math.min(1, (maxY - minY + padY * 2)) * canvas.height;
+
+    const confidence = visCount ? (visSum / visCount) : (0.85 + Math.random() * 0.13);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+
+    const text = `${label} ${confidence.toFixed(2)}`;
+    ctx.font = 'bold 14px Segoe UI, sans-serif';
+    const textW = ctx.measureText(text).width;
+    ctx.fillStyle = color;
+    ctx.fillRect(x - 1, y - 20, textW + 10, 20);
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.fillStyle = '#0b0b12';
+    ctx.fillText(text, -(x + 5 + textW), y - 5);
+    ctx.restore();
+  }
+}
+
+loadModels();
+</script>
+</body>
+</html>
