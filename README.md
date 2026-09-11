@@ -40,7 +40,9 @@ cd useless_project_Niggolas
 ```
 
 # Run
-Open `index.html` directly in a real browser (Chrome/Edge), click **Start Camera**, and grant camera access. Must be opened as a `file://` page or served locally — not through a sandboxed preview — since it needs real `getUserMedia` and network access.
+Live demo: **[zam-boso.github.io/useless_project_Niggolas](https://zam-boso.github.io/useless_project_Niggolas/)** — open it, click **Start Camera**, and grant camera access.
+
+To run locally instead: open `index.html` directly in a real browser (Chrome/Edge), click **Start Camera**, and grant camera access. Must be opened as a `file://` page or served locally — not through a sandboxed preview — since it needs real `getUserMedia` and network access.
 
 ### Project Documentation
 For Software:
