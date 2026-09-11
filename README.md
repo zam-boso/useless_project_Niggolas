@@ -46,14 +46,14 @@ Open `index.html` directly in a real browser (Chrome/Edge), click **Start Camera
 For Software:
 
 # Screenshots (Add at least 3)
-![Screenshot1](Add screenshot 1 here with proper name)
-*Landing screen with the Start Camera button*
+![Screenshot1](screenshots/01-landing.png)
+*Landing screen — logo, Start Camera button, and the lizard pet waiting by the corner*
 
-![Screenshot2](Add screenshot 2 here with proper name)
-*Live tracking with face/body detection boxes and a roast on screen*
+![Screenshot2](screenshots/02-tracking-roast.webp)
+*Live tracking with face/person detection boxes and an AI-generated roast on screen*
 
-![Screenshot3](Add screenshot 3 here with proper name)
-*Escalated, more savage roast after standing in frame for a while*
+![Screenshot3](screenshots/03-lizard-pet.webp)
+*The lizard pet following the cursor while tracking and roasting run live*
 
 # Diagrams
 ![Workflow](Add your workflow/architecture diagram here)
