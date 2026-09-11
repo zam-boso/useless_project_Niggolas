@@ -2,7 +2,7 @@
 
 
 
-# COOKED 🎯
+# COOKED! 🎯💀💀
 
 
 ## Basic Details
@@ -47,7 +47,7 @@ To run locally instead: open `index.html` directly in a real browser (Chrome/Edg
 ### Project Documentation
 For Software:
 
-# Screenshots (Add at least 3)
+# Screenshots
 ![Screenshot1](screenshots/01-landing.png)
 *Landing screen — logo, Start Camera button, and the lizard pet waiting by the corner*
 
