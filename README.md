@@ -56,7 +56,7 @@ For Software:
 *The lizard pet following the cursor while tracking and roasting run live*
 
 # Diagrams
-![Workflow](Add your workflow/architecture diagram here)
+![Workflow](screenshots/workflow.svg)
 *Webcam → MediaPipe landmark detection → stats summary → Groq LLM → roast + random sound effect, looping every few seconds*
 
 ### Project Demo
