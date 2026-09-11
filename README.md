@@ -61,11 +61,8 @@ For Software:
 
 ### Project Demo
 # Video
-[Add your demo video link here]
-*Explain what the video demonstrates*
-
-# Additional Demos
-[Add any extra demo materials/links]
+[https://youtu.be/OJG22jnT70w](https://youtu.be/OJG22jnT70w)
+*Live walkthrough of COOKED tracking a face/body and roasting it in real time*
 
 ## Team Contributions
 - Aadi Krishna: Core tracking pipeline, AI roast integration, UI/UX design
